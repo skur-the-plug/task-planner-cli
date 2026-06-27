@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+
+# Local user data
+tasks.json
+plans/
+notes/
