@@ -260,18 +260,28 @@ def run_ai_plan(ai, prompt):
                 "--sandbox",
                 "read-only",
                 "--skip-git-repo-check",
+                "--ephemeral",
                 "--color",
                 "never",
-                prompt,
+                "-",
             ]
         elif ai == "gemini":
-            cmd = ["gemini", "--prompt", prompt]
+            cmd = ["gemini", "--prompt", "Follow the planning instructions from stdin."]
         else:
             return None
 
-        result = subprocess.run(cmd, text=True, capture_output=True, timeout=90)
-    except (subprocess.SubprocessError, OSError) as error:
-        print(f"{ai} planner failed: {error}")
+        result = subprocess.run(
+            cmd,
+            input=prompt,
+            text=True,
+            capture_output=True,
+            timeout=90,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"{ai} planner timed out after 90 seconds, using local planner.")
+        return None
+    except OSError as error:
+        print(f"{ai} planner could not start: {error}")
         return None
 
     output = result.stdout.strip()
@@ -404,6 +414,8 @@ subparsers = parser.add_subparsers(dest="command")
 list_parser = subparsers.add_parser("list")
 list_parser.add_argument("filter", nargs="?", choices=["done", "todo", "in-progress"])
 
+subparsers.add_parser("done")
+
 add_parser = subparsers.add_parser("add")
 add_parser.add_argument("description")
 
@@ -461,6 +473,12 @@ elif args.command == "list":
                 printer(task)
     else:
         for task in data:
+            if task["status"] != "done":
+                printer(task)
+
+elif args.command == "done":
+    for task in data:
+        if task["status"] == "done":
             printer(task)
 
 elif args.command == "update":
